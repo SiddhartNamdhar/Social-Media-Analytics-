@@ -1,0 +1,4 @@
+telethon
+pydantic
+pydantic-settings
+python-dotenv

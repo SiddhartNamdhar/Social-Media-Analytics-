@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+data/raw/
+data/processed/
+
+*.session
+*.session-journal
