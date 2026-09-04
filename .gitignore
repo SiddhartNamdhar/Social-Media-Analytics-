@@ -1,0 +1,54 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Large datasets
+datasets/
+**/datasets/
+
+# Generated pipeline data
+data/raw/
+data/processed/
+**/data/raw/
+**/data/processed/
+
+# Generated output
+**/output.txt
+
+# Telegram authentication
+*.session
+*.session-journal
+
+# IDE
+.vscode/
+.idea/
+.history/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
