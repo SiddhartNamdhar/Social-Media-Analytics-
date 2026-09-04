@@ -25,3 +25,39 @@ class NormalizationError(SocialMediaIntelligenceError):
 class StorageError(SocialMediaIntelligenceError):
     """Raised when an error occurs during data storage."""
     pass
+
+class XDatasetError(SocialMediaIntelligenceError):
+    """Raised when there is an error during X dataset collection."""
+    pass
+
+class XDatasetFileNotFoundError(XDatasetError):
+    """Raised when the specified X dataset file is not found."""
+    pass
+
+class XDatasetFormatError(XDatasetError):
+    """Raised when the X dataset format is unsupported or malformed."""
+    pass
+
+class YouTubeError(SocialMediaIntelligenceError):
+    """Base exception for YouTube related errors."""
+    pass
+
+class YouTubeConfigurationError(YouTubeError):
+    """Raised when YouTube API configuration is invalid or missing."""
+    pass
+
+class YouTubeAPIError(YouTubeError):
+    """Raised when the YouTube API returns an error."""
+    pass
+
+class YouTubeQuotaExceededError(YouTubeAPIError):
+    """Raised when YouTube API quota is exceeded."""
+    pass
+
+class YouTubeVideoNotFoundError(YouTubeError):
+    """Raised when a requested YouTube video is not found or is private."""
+    pass
+
+class YouTubeChannelNotFoundError(YouTubeError):
+    """Raised when a requested YouTube channel is not found."""
+    pass

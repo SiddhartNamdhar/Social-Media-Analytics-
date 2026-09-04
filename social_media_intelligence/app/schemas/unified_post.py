@@ -44,6 +44,7 @@ class InteractionMetrics(BaseModel):
     like_count: Optional[int] = None
     reply_count: Optional[int] = None
     share_count: Optional[int] = None
+    quote_count: Optional[int] = None
     view_count: Optional[int] = None
 
 
@@ -57,11 +58,21 @@ class Relationships(BaseModel):
 
 class Metadata(BaseModel):
     source_type: str
-    conversation_id: str
+    conversation_id: Optional[str] = None
     collected_at: datetime
-    original_message_id: int
-    chat_id: int
+    original_message_id: Optional[int] = None
+    chat_id: Optional[int] = None
     message_type: Optional[str] = None
+    dataset_name: Optional[str] = None
+    original_post_id: Optional[str] = None
+    
+    # YouTube specific optional fields
+    video_id: Optional[str] = None
+    video_title: Optional[str] = None
+    youtube_channel_id: Optional[str] = None
+    youtube_channel_title: Optional[str] = None
+    parent_comment_id: Optional[str] = None
+    is_reply: Optional[bool] = None
 
 
 class RawReference(BaseModel):

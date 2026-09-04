@@ -7,9 +7,10 @@ from ..schemas.unified_post import (
     Relationships, Metadata, RawReference, EntityType, PublicMetrics
 )
 from ..utils.entity_extractor import EntityExtractor
+from ..utils.datetime_utils import get_utc_now, ensure_utc
 from ..exceptions import NormalizationError
 
-class TelegramNormalizer(BaseNormalizer):
+class TelegramNormalizer(BaseNormalizer[UnifiedPost]):
     def normalize(self, raw_data: Dict[str, Any], raw_reference: Dict[str, str], collection_metadata: Dict[str, Any]) -> UnifiedPost:
         """Normalize a raw Telegram message dictionary into a UnifiedPost."""
         try:
@@ -53,9 +54,9 @@ class TelegramNormalizer(BaseNormalizer):
             date_str = raw_data.get('date')
             try:
                 # expecting ISO format string
-                timestamp = datetime.fromisoformat(date_str) if date_str else datetime.utcnow()
+                timestamp = ensure_utc(datetime.fromisoformat(date_str)) if date_str else get_utc_now()
             except Exception:
-                timestamp = datetime.utcnow()
+                timestamp = get_utc_now()
 
             # Interaction
             interaction = InteractionMetrics(
@@ -83,9 +84,9 @@ class TelegramNormalizer(BaseNormalizer):
             # Metadata
             collected_at_str = collection_metadata.get('collected_at')
             try:
-                collected_at = datetime.fromisoformat(collected_at_str) if collected_at_str else datetime.utcnow()
+                collected_at = ensure_utc(datetime.fromisoformat(collected_at_str)) if collected_at_str else get_utc_now()
             except Exception:
-                collected_at = datetime.utcnow()
+                collected_at = get_utc_now()
 
             metadata = Metadata(
                 source_type="message",
