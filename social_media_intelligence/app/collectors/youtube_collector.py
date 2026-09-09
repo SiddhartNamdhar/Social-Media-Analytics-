@@ -163,7 +163,8 @@ class YouTubeCollector(BaseCollector):
                 "comments_collected": 0,
                 "replies_collected": 0,
                 "skipped_videos": 0,
-                "skipped_records": 0
+                "skipped_records": 0,
+                "collector_duplicates": 0
             }
         }
         
@@ -178,11 +179,13 @@ class YouTubeCollector(BaseCollector):
                 metadata["statistics"]["videos_processed"] = 1
                 
                 if comments_limit > 0:
-                    comments = await self.collect_video_comments(
+                    comments_result = await self.collect_video_comments(
                         video_id, 
                         limit=comments_limit, 
                         include_replies=include_replies
                     )
+                    comments = comments_result.get("comments", [])
+                    metadata["statistics"]["collector_duplicates"] += comments_result.get("duplicates", 0)
                     for c in comments:
                         if c.get("record_type") == "comment":
                             metadata["statistics"]["comments_collected"] += 1
@@ -280,7 +283,8 @@ class YouTubeCollector(BaseCollector):
                 "comments_collected": 0,
                 "replies_collected": 0,
                 "skipped_videos": 0,
-                "skipped_records": 0
+                "skipped_records": 0,
+                "collector_duplicates": 0
             }
         }
         
@@ -319,11 +323,13 @@ class YouTubeCollector(BaseCollector):
                 metadata["statistics"]["videos_processed"] += 1
                 
                 if comments_per_video > 0:
-                    comments = await self.collect_video_comments(
+                    comments_result = await self.collect_video_comments(
                         video_id, 
                         limit=comments_per_video, 
                         include_replies=include_replies
                     )
+                    comments = comments_result.get("comments", [])
+                    metadata["statistics"]["collector_duplicates"] += comments_result.get("duplicates", 0)
                     
                     for c in comments:
                         if c.get("record_type") == "comment":
@@ -352,6 +358,7 @@ class YouTubeCollector(BaseCollector):
     async def collect_comment_replies(self, parent_comment_id: str, video_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         """Collect replies to a specific top-level comment."""
         replies = []
+        seen_ids = set()
         next_page_token = None
         max_results = min(limit, settings.YOUTUBE_MAX_RESULTS)
         
@@ -369,6 +376,9 @@ class YouTubeCollector(BaseCollector):
                 items = res.get("items", [])
                 
                 for item in items:
+                    if item["id"] in seen_ids:
+                        continue
+                    seen_ids.add(item["id"])
                     item["record_type"] = "reply"
                     item["video_id"] = video_id
                     replies.append(item)
@@ -383,13 +393,19 @@ class YouTubeCollector(BaseCollector):
                 
         return replies
 
-    async def collect_video_comments(self, video_id: str, limit: int = 50, include_replies: bool = False) -> List[Dict[str, Any]]:
-        """Collect top-level video comments and optionally replies."""
+    async def collect_video_comments(self, video_id: str, limit: int = 50, include_replies: bool = False) -> Dict[str, Any]:
+        """Collect top-level video comments and optionally replies.
+        Returns a dict containing 'comments' (list) and 'duplicates' (int).
+        """
         comments = []
+        seen_ids = set()
+        duplicates_found = 0
+        top_level_count = 0
+        
         next_page_token = None
         max_results = min(limit, settings.YOUTUBE_MAX_RESULTS)
         
-        while len(comments) < limit:
+        while top_level_count < limit:
             def _call(token):
                 return self.youtube.commentThreads().list(
                     part="snippet,replies",
@@ -404,32 +420,56 @@ class YouTubeCollector(BaseCollector):
                 items = res.get("items", [])
                 
                 for item in items:
+                    item_id = item["id"]
+                    if item_id in seen_ids:
+                        duplicates_found += 1
+                        continue
+                    
+                    seen_ids.add(item_id)
                     item["record_type"] = "comment"
                     item["video_id"] = video_id
                     
-                    # Flatten the top-level comment structure slightly for easier processing later,
-                    # but preserve original payload as well
                     comments.append(item)
+                    top_level_count += 1
                     
                     # Automatically collect replies if requested
                     if include_replies:
                         total_reply_count = item["snippet"].get("totalReplyCount", 0)
                         if total_reply_count > 0:
                             parent_id = item["id"]
-                            # If they are already in the payload (up to 5):
-                            if "replies" in item and len(item["replies"].get("comments", [])) == total_reply_count:
+                            
+                            unique_inline_replies = []
+                            if "replies" in item and "comments" in item["replies"]:
                                 for r in item["replies"]["comments"]:
+                                    r_id = r["id"]
+                                    if r_id in seen_ids:
+                                        duplicates_found += 1
+                                        continue
+                                    seen_ids.add(r_id)
                                     r["record_type"] = "reply"
                                     r["video_id"] = video_id
-                                    comments.append(r)
-                            else:
-                                # Fetch remaining replies
+                                    unique_inline_replies.append(r)
+                                    
+                            comments.extend(unique_inline_replies)
+                            
+                            remaining = total_reply_count - len(unique_inline_replies)
+                            if remaining > 0:
+                                # Fetch remaining replies by requesting total_reply_count 
+                                # (API returns from start, so we must fetch all and deduplicate)
                                 fetched_replies = await self.collect_comment_replies(
                                     parent_id, video_id, limit=total_reply_count
                                 )
-                                comments.extend(fetched_replies)
+                                for r in fetched_replies:
+                                    r_id = r["id"]
+                                    if r_id in seen_ids:
+                                        duplicates_found += 1
+                                        continue
+                                    seen_ids.add(r_id)
+                                    r["record_type"] = "reply"
+                                    r["video_id"] = video_id
+                                    comments.append(r)
                                 
-                    if len([c for c in comments if c.get("record_type") == "comment"]) >= limit:
+                    if top_level_count >= limit:
                         break
                         
                 next_page_token = res.get("nextPageToken")
@@ -449,11 +489,11 @@ class YouTubeCollector(BaseCollector):
                         
                     if "commentsDisabled" in reasons:
                         logger.warning(f"Comments are disabled for video {video_id}.")
-                        return comments
+                        return {"comments": comments, "duplicates": duplicates_found}
                 
                 self._handle_http_error(e, f"get comments for video {video_id}")
                 
-        return comments
+        return {"comments": comments, "duplicates": duplicates_found}
 
     async def collect_by_keyword(self, query: str, video_limit: int = 2, comments_per_video: int = 10, include_replies: bool = False, batch_id: Optional[str] = None) -> Dict[str, Any]:
         """Orchestrated helper to collect videos and their comments for a keyword."""
@@ -474,7 +514,8 @@ class YouTubeCollector(BaseCollector):
                 "comments_collected": 0,
                 "replies_collected": 0,
                 "skipped_videos": 0,
-                "skipped_records": 0
+                "skipped_records": 0,
+                "collector_duplicates": 0
             }
         }
         
@@ -510,11 +551,13 @@ class YouTubeCollector(BaseCollector):
                 metadata["statistics"]["videos_processed"] += 1
                 
                 if comments_per_video > 0:
-                    comments = await self.collect_video_comments(
+                    comments_result = await self.collect_video_comments(
                         video_id, 
                         limit=comments_per_video, 
                         include_replies=include_replies
                     )
+                    comments = comments_result.get("comments", [])
+                    metadata["statistics"]["collector_duplicates"] += comments_result.get("duplicates", 0)
                     
                     for c in comments:
                         if c.get("record_type") == "comment":

@@ -91,7 +91,7 @@ class YouTubeCollectionService:
             "replies_collected": stats.get("replies_collected", 0),
             "normalized_posts": len(normalized_posts),
             "persisted_posts": total_processed,
-            "collector_duplicates": 0,  # YouTube collector doesn't deduplicate in memory currently
+            "collector_duplicates": stats.get("collector_duplicates", 0),
             "storage_duplicates": total_duplicates,
             "normalization_skips": norm_skipped_count,
             "skipped_videos": stats.get("skipped_videos", 0),

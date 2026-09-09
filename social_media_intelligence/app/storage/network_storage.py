@@ -1,14 +1,15 @@
 import json
 import os
-from typing import List, Set, Dict, Any
+from typing import Optional, List, Set, Dict, Any
 from ..schemas.unified_edge import UnifiedEdge
 from ..utils.datetime_utils import get_utc_now
 from ..config import settings
 from ..exceptions import StorageError
 
 class NetworkStorage:
-    def __init__(self, platform: str):
+    def __init__(self, platform: str, batch_id: Optional[str] = None):
         self.platform = platform
+        self.batch_id = batch_id
         self.base_dir = os.path.join(settings.DATA_DIRECTORY, "processed", f"{platform}_network")
         self._existing_ids: Optional[Set[str]] = None
         self._current_file: Optional[str] = None
@@ -23,6 +24,8 @@ class NetworkStorage:
             date_str = now.strftime("%Y-%m-%d")
             
             dir_path = os.path.join(self.base_dir, date_str)
+            if self.batch_id:
+                dir_path = os.path.join(dir_path, self.batch_id)
             os.makedirs(dir_path, exist_ok=True)
             
             file_path = os.path.join(dir_path, "edges.jsonl")

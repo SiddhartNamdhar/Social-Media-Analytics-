@@ -19,7 +19,6 @@ class XNetworkService:
         self.normalizer = XNetworkNormalizer()
         # The prompt requested raw network storage to be under raw/x_network
         self.raw_storage = RawStorage(platform="x_network")
-        self.network_storage = NetworkStorage(platform="x")
 
     async def collect_and_process(
         self,
@@ -36,6 +35,7 @@ class XNetworkService:
     ) -> Dict[str, Any]:
         
         run_batch_id = batch_id or str(uuid.uuid4())[:8]
+        network_storage = NetworkStorage(platform="x", batch_id=run_batch_id)
         
         collector = XNetworkCollector(
             dataset_path=dataset_path,
@@ -120,7 +120,7 @@ class XNetworkService:
             # Processed Storage
             if normalized_edges:
                 try:
-                    processed_result = self.network_storage.save_and_report(normalized_edges)
+                    processed_result = network_storage.save_and_report(normalized_edges)
                     if not processed_output_path:
                         processed_output_path = processed_result.get("file_path")
                 except StorageError as e:

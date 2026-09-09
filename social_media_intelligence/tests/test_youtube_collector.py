@@ -71,4 +71,67 @@ def test_collect_video_comments_disabled():
         collector = YouTubeCollector(api_key="dummy_key")
         
         comments = asyncio.run(collector.collect_video_comments("dummy_video"))
-        assert comments == []
+        assert comments == {"comments": [], "duplicates": 0}
+
+def test_collect_video_comments_deduplication():
+    """Test that comments and replies are deduplicated properly and remaining logic works."""
+    with patch("app.collectors.youtube_collector.build") as mock_build:
+        mock_service = MagicMock()
+        mock_build.return_value = mock_service
+        
+        # We need mock commentThreads.list and mock comments.list
+        mock_threads = MagicMock()
+        mock_service.commentThreads.return_value = mock_threads
+        mock_threads_list = MagicMock()
+        mock_threads.list.return_value = mock_threads_list
+        
+        # Threads list will return two identical top-level comments and 1 inline reply that is also identical
+        mock_threads_list.execute.return_value = {
+            "items": [
+                {
+                    "id": "c1",
+                    "snippet": {
+                        "videoId": "dummy",
+                        "totalReplyCount": 2, # inline has 1, remaining 1
+                    },
+                    "replies": {
+                        "comments": [
+                            {"id": "r1", "snippet": {"textOriginal": "first inline reply"}}
+                        ]
+                    }
+                },
+                {
+                    "id": "c1", # Duplicate top-level comment
+                    "snippet": {
+                        "videoId": "dummy",
+                        "totalReplyCount": 0
+                    }
+                }
+            ]
+        }
+        
+        mock_comments = MagicMock()
+        mock_service.comments.return_value = mock_comments
+        mock_comments_list = MagicMock()
+        mock_comments.list.return_value = mock_comments_list
+        
+        # Comments list will return the missing reply, but also a duplicate of r1
+        mock_comments_list.execute.return_value = {
+            "items": [
+                {"id": "r1", "snippet": {"textOriginal": "duplicate missing reply"}},
+                {"id": "r2", "snippet": {"textOriginal": "actual missing reply"}}
+            ]
+        }
+        
+        collector = YouTubeCollector(api_key="dummy_key")
+        result = asyncio.run(collector.collect_video_comments("dummy", include_replies=True))
+        
+        comments = result["comments"]
+        duplicates = result["duplicates"]
+        
+        assert len(comments) == 3 # 1 top level, 2 replies
+        ids = [c["id"] for c in comments]
+        assert "c1" in ids
+        assert "r1" in ids
+        assert "r2" in ids
+        assert duplicates == 2 # one duplicate c1, one duplicate r1

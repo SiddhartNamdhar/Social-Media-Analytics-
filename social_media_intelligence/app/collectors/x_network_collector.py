@@ -99,6 +99,7 @@ class XNetworkCollector(BaseCollector):
         duplicate_count = 0
         valid_yielded = 0
         
+        seen_edges = set()
         chunk = []
         
         try:
@@ -135,6 +136,12 @@ class XNetworkCollector(BaseCollector):
                         if not source or not target:
                             skipped_count += 1
                             continue
+                            
+                        edge_key = (source, target, self.relationship_type)
+                        if edge_key in seen_edges:
+                            duplicate_count += 1
+                            continue
+                        seen_edges.add(edge_key)
                             
                         mapped = {
                             "_original": row,

@@ -4,14 +4,15 @@ from app.services.x_network_service import XNetworkService
 
 import asyncio
 
-def test_x_network_service_deduplication_aggregation():
+@patch('app.services.x_network_service.NetworkStorage')
+def test_x_network_service_deduplication_aggregation(mock_network_storage_class):
     """
     Test that XNetworkService correctly aggregates distinct stats
     from the collector, normalizer, and storage without double counting.
     """
     service = XNetworkService()
     
-    # We will mock the collector, raw_storage, normalizer, and network_storage
+    # We will mock the collector, raw_storage, normalizer
     mock_collector = MagicMock()
     mock_collector.validate_connection = AsyncMock(return_value=True)
     
@@ -59,10 +60,8 @@ def test_x_network_service_deduplication_aggregation():
     service.raw_storage.save_stream = MagicMock(return_value="/tmp/raw_edges.jsonl")
     
     # Mock processed storage:
-    # Chunk 1: 2 raw items -> 1 normalized items -> save_and_report
-    # We mock save_and_report to return 0 added, 1 duplicate
-    # Chunk 2: 1 raw items -> 1 normalized items -> save_and_report
-    # We mock save_and_report to return 1 added, 0 duplicates
+    mock_network_storage_instance = mock_network_storage_class.return_value
+    
     def mock_save_and_report(normalized_edges):
         if len(normalized_edges) == 1 and normalized_edges[0].edge_id == "A-B":
             # Chunk 1 response
@@ -72,7 +71,7 @@ def test_x_network_service_deduplication_aggregation():
             return {"file_path": "/tmp/processed_edges.jsonl", "added_count": 1, "duplicate_count": 0}
         return {"file_path": "/tmp/processed_edges.jsonl", "added_count": 0, "duplicate_count": 0}
 
-    service.network_storage.save_and_report = MagicMock(side_effect=mock_save_and_report)
+    mock_network_storage_instance.save_and_report.side_effect = mock_save_and_report
     
     # Run the service with the mocked collector class
     with patch("app.services.x_network_service.XNetworkCollector", return_value=mock_collector):

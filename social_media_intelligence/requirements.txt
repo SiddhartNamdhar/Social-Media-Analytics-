@@ -4,3 +4,6 @@ pydantic-settings
 python-dotenv
 ijson
 google-api-python-client
+langdetect
+emoji
+ftfy
