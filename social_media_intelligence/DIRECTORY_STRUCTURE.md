@@ -71,7 +71,7 @@ This document provides a comprehensive view of the Social Media Intelligence pro
 │   ├── conftest.py
 │   ├── test_network_storage.py
 │   ├── test_nlp_preprocessing_service.py
-│   ├── test_sentiment_analysis_service.py
+│   ├── test_sentiment_service.py
 │   ├── test_telegram_normalizer.py
 │   ├── test_unified_timeline_service.py
 │   ├── test_x_collection_service.py
@@ -84,21 +84,14 @@ This document provides a comprehensive view of the Social Media Intelligence pro
 │   ├── test_youtube_collector.py
 │   └── test_youtube_normalizer.py
 ├── .env
-├── benchmark.py
-├── fix_report.py
 ├── generate_structure.py
 ├── login.py
 ├── main.py
-├── output.txt
-├── pure_inference_benchmark.py
 ├── README.md
 ├── requirements.txt
-├── run_benchmark_100k.py
-├── run_benchmark_analysis.py
-├── run_benchmark_analysis_v2.py
-├── SENTIMENT_BENCHMARK_REPORT.md
-├── SENTIMENT_BENCHMARK_REPORT_100K.md
-└── social_media_intelligence.session
+├── social_media_intelligence.session
+├── stage8_audit.py
+└── stage8_production.py
 ```
 
 ## File Descriptions
@@ -176,15 +169,11 @@ This document provides a comprehensive view of the Social Media Intelligence pro
 
 ### `/ (Root Files)`
 - **`.env`**: Environment variables (secrets, paths).
-- **`benchmark.py`**: Script for benchmarking the NLP Multiprocessing pipeline.
-- **`fix_report.py`**: Utility script to fix/update benchmark markdown reports dynamically.
 - **`generate_structure.py`**: Utility script written to dynamically generate this directory structure markdown file.
 - **`login.py`**: Standalone script for testing Telegram or other API authentications.
 - **`main.py`**: The primary CLI entry point for the application. Orchestrates full end-to-end runs.
-- **`output.txt`**: Temporary output log dump.
-- **`pure_inference_benchmark.py`**: Isolated script to test pure GPU tensor throughput strictly in-memory.
 - **`README.md`**: Main project documentation.
 - **`requirements.txt`**: Python package dependencies.
-- **`run_benchmark_*.py`**: Various iterative scripts used to test HuggingFace pipeline vs raw model inference bottlenecks.
-- **`SENTIMENT_BENCHMARK_REPORT*.md`**: Markdown reports containing detailed hardware, throughput, and qualitative analysis of the sentiment model.
 - **`social_media_intelligence.session`**: Telethon session file for persistent Telegram API login.
+- **`stage8_audit.py`**: Executes the deterministic identity and sequence audit for the Stage 8 Sentiment Analysis outputs.
+- **`stage8_production.py`**: Production entry point for processing the 25.4 million records via the Stage 8 pipeline.
